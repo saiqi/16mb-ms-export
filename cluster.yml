@@ -1,0 +1,11 @@
+AMQP_URI: pyamqp://${RABBITMQ_USER:rabbitmq}:${RABBITMQ_PASSWORD:rabbitmq}@${RABBITMQ_HOST:rabbitmq}:${RABBITMQ_PORT:5672}
+max_workers: 10
+
+LOGGING:
+    version: 1
+    handlers:
+        console:
+            class: logging.StreamHandler
+    root:
+        level: INFO
+        handlers: [console]
