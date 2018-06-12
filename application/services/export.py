@@ -41,10 +41,7 @@ class ExportService(object):
         k.key = filename
         k.set_contents_from_filename('/tmp/{}'.format(filename))
 
-    @rpc
-    def export(self, svg_string, filename, export_config, _format = 'png', dpi = 90, width = 1024, height = 768):
-        self._check_export_config(export_config)
-
+    def _call_inkscape(self, svg_string, filename, _format, dpi = 90, width = 1024, height = 768):
         with open('/tmp/input.svg', 'w') as f:
             f.write(svg_string)
 
@@ -61,17 +58,27 @@ class ExportService(object):
         elif _format == 'svg':
             _log.info('Exporting as Plain SVG {} to local filesystem'.format(filename))
             cmd = ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename), 
-            '--without-gui', '--export-area-drawing', '--export-width={}'.format(str(width)),
-            '--export-height={}'.format(str(height)), '--export-dpi={}'.format(str(dpi)),
-            '--export-text-to-path']
+            '--without-gui', '--export-area-drawing', '--export-text-to-path']
         else:
             raise ExportServiceError('Format {} not supported'.format(export_config['format']['type']))
 
         status = subprocess.run(cmd)
 
+    @rpc
+    def export(self, svg_string, filename, export_config, _format = 'png', dpi = 90, width = 1024, height = 768):
+        self._check_export_config(export_config)
+        self._call_inkscape(svg_string, filename, _format, dpi, width, height)
         if export_config['target']['type'] == 's3':
             bucket_id = export_config['target']['config']['bucket']
             _log.info('Uploading {} on S3 (bucket: {})'.format(filename, bucket_id))
             self._upload_to_s3(bucket_id, filename)
-
         return True
+
+    @rpc
+    def text_to_path(self, svg_string):
+        self._call_inkscape(svg_string, 'export.svg', 'svg')
+
+        with open('/tmp/export.svg', 'r') as f:
+            converted = f.read()
+
+        return converted
