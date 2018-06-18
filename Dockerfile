@@ -2,7 +2,7 @@ FROM saiqi/16mb-platform:latest
 
 RUN pip3 install boto
 RUN echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/backports.list
-RUN apt-get update && apt-get -t jessie-backports install -y inkscape
+RUN apt-get update && apt-get -t jessie-backports install -y inkscape && apt-get install -y imagemagick
 
 COPY ./fonts/*.ttf ./fonts/*.otf /usr/local/share/fonts/
 RUN fc-cache -fv

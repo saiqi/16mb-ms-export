@@ -64,10 +64,17 @@ class ExportService(object):
 
         status = subprocess.run(cmd)
 
+    def _call_convert(self, svg_string, filename, dpi = 90, width = 1024, height = 768):
+        with open('/tmp/input.svg', 'w') as f:
+            f.write(svg_string)
+        _log.info('Exporting {} to local filesystem'.format(filename))
+        cmd = ['convert', '/tmp/input.svg', '-density', str(dpi), '-size', 'x'.join([width, height]), '/tmp/{}'.format(filename)]
+        status = subprocess.run(cmd)
+
     @rpc
-    def export(self, svg_string, filename, export_config, _format = 'png', dpi = 90, width = 1024, height = 768):
+    def export(self, svg_string, filename, export_config, dpi = 90, width = 1024, height = 768):
         self._check_export_config(export_config)
-        self._call_inkscape(svg_string, filename, _format, dpi, width, height)
+        self._call_convert(svg_string, filename, dpi, width, height)
         if export_config['target']['type'] == 's3':
             bucket_id = export_config['target']['config']['bucket']
             _log.info('Uploading {} on S3 (bucket: {})'.format(filename, bucket_id))
