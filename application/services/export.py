@@ -68,8 +68,11 @@ class ExportService(object):
         with open('/tmp/input.svg', 'w') as f:
             f.write(svg_string)
         _log.info('Exporting {} to local filesystem'.format(filename))
-        cmd = ['convert', '/tmp/input.svg', '-density', str(dpi), '-size', 'x'.join([width, height]), '/tmp/{}'.format(filename)]
-        status = subprocess.run(cmd)
+        cmd = ['convert', '-density', str(dpi), '-size', 'x'.join([str(width), str(height)]), '/tmp/input.svg', '/tmp/{}'.format(filename)]
+        try:
+            status = subprocess.run(cmd)
+        except:
+            raise ExportServiceError('An error occured while running convert command')
 
     @rpc
     def export(self, svg_string, filename, export_config, dpi = 90, width = 1024, height = 768):
