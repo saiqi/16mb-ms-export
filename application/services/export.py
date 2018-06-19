@@ -84,7 +84,7 @@ class ExportService(object):
 
     @rpc
     def text_to_path(self, svg_string):
-        self._call_inkscape(svg_string, 'export.svg', 'svg')
+        self._call_inkscape(svg_string, 'export.svg', 'svg', None)
 
         with open('/tmp/export.svg', 'r') as f:
             converted = f.read()
