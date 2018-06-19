@@ -41,20 +41,18 @@ class ExportService(object):
         k.key = filename
         k.set_contents_from_filename('/tmp/{}'.format(filename))
 
-    def _call_inkscape(self, svg_string, filename, _format, dpi = 90, width = 1024, height = 768):
+    def _call_inkscape(self, svg_string, filename, _format, dpi):
         with open('/tmp/input.svg', 'w') as f:
             f.write(svg_string)
 
         if _format == 'png':
             _log.info('Exporting as PNG {} to local filesystem'.format(filename))
             cmd = ['inkscape', '/tmp/input.svg', '--export-png=/tmp/{}'.format(filename), 
-            '--without-gui', '--export-area-drawing', '--export-width={}'.format(str(width)),
-            '--export-height={}'.format(str(height)), '--export-dpi={}'.format(str(dpi))]
+            '--without-gui', '--export-area-drawing', '--export-dpi={}'.format(str(dpi))]
         elif _format == 'pdf':
             _log.info('Exporting as PDF {} to local filesystem'.format(filename))
             cmd = ['inkscape', '/tmp/input.svg', '--export-pdf=/tmp/{}'.format(filename), 
-            '--without-gui', '--export-area-drawing', '--export-width={}'.format(str(width)),
-            '--export-height={}'.format(str(height)), '--export-dpi={}'.format(str(dpi))]
+            '--without-gui', '--export-area-drawing', '--export-dpi={}'.format(str(dpi))]
         elif _format == 'svg':
             _log.info('Exporting as Plain SVG {} to local filesystem'.format(filename))
             cmd = ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename), 
@@ -64,20 +62,20 @@ class ExportService(object):
 
         status = subprocess.run(cmd)
 
-    def _call_convert(self, svg_string, filename, dpi = 90, width = 1024, height = 768):
+    def _call_convert(self, svg_string, filename, dpi):
         with open('/tmp/input.svg', 'w') as f:
             f.write(svg_string)
         _log.info('Exporting {} to local filesystem'.format(filename))
-        cmd = ['convert', '-density', str(dpi), '-size', 'x'.join([str(width), str(height)]), '/tmp/input.svg', '/tmp/{}'.format(filename)]
+        cmd = ['convert', '-density', str(dpi), '/tmp/input.svg', '/tmp/{}'.format(filename)]
         try:
             status = subprocess.run(cmd)
         except:
             raise ExportServiceError('An error occured while running convert command')
 
     @rpc
-    def export(self, svg_string, filename, export_config, dpi = 90, width = 1024, height = 768):
+    def export(self, svg_string, filename, export_config, dpi = 72):
         self._check_export_config(export_config)
-        self._call_convert(svg_string, filename, dpi, width, height)
+        self._call_convert(svg_string, filename, dpi)
         if export_config['target']['type'] == 's3':
             bucket_id = export_config['target']['config']['bucket']
             _log.info('Uploading {} on S3 (bucket: {})'.format(filename, bucket_id))
