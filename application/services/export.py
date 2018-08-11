@@ -1,5 +1,6 @@
 from logging import getLogger
 import subprocess
+import re
 from nameko.rpc import rpc
 from boto.s3.key import Key
 from boto.s3.connection import Location
@@ -31,6 +32,23 @@ class ExportService(object):
             if 'bucket' not in target['config']:
                 raise ExportServiceError('Bucket required for S3 target')
 
+    @staticmethod
+    def _extension_to_content_type(filename):
+        regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.svg$)'
+        r = re.search(regex, filename)
+        if not regex:
+            raise ExportServiceError('Can not find extension from filename: {}'.format(filename))
+        ext = r.group(2)
+        if ext.endswith('jpg') or ext.endswith('jpeg'):
+            return 'image/jpeg'
+        elif ext.endswith('png'):
+            return 'image/png'
+        elif ext.endswith('pdf'):
+            return 'application/pdf'
+        elif ext.endswith('svg'):
+            return 'image/svg+xml'
+        return None
+
     def _upload_to_s3(self, bucket_id, filename):
         exists = self.s3.lookup(bucket_id)
         if not exists:
@@ -40,6 +58,11 @@ class ExportService(object):
         k = Key(bucket)
         k.key = filename
         k.set_contents_from_filename('/tmp/{}'.format(filename))
+        content_type = self._extension_to_content_type(filename)
+        k.set_metadata('Content-Type', content_type)
+        k.set_acl('public-read')
+        url = k.generate_url(expires_in=0, query_auth=False)
+        return url
 
     def _call_inkscape(self, svg_string, filename, _format, dpi):
         with open('/tmp/input.svg', 'w') as f:
@@ -79,8 +102,8 @@ class ExportService(object):
         if export_config['target']['type'] == 's3':
             bucket_id = export_config['target']['config']['bucket']
             _log.info('Uploading {} on S3 (bucket: {})'.format(filename, bucket_id))
-            self._upload_to_s3(bucket_id, filename)
-        return True
+            url = self._upload_to_s3(bucket_id, filename)
+        return url
 
     @rpc
     def text_to_path(self, svg_string):
