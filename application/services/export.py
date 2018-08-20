@@ -47,6 +47,8 @@ class ExportService(object):
             return 'application/pdf'
         elif ext.endswith('svg'):
             return 'image/svg+xml'
+        elif ext.endswith('json'):
+            return 'application/json'
         return None
 
     def _upload_to_s3(self, bucket_id, filename):
@@ -99,6 +101,17 @@ class ExportService(object):
     def export(self, svg_string, filename, export_config, dpi = 72):
         self._check_export_config(export_config)
         self._call_convert(svg_string, filename, dpi)
+        if export_config['target']['type'] == 's3':
+            bucket_id = export_config['target']['config']['bucket']
+            _log.info('Uploading {} on S3 (bucket: {})'.format(filename, bucket_id))
+            url = self._upload_to_s3(bucket_id, filename)
+        return url
+
+    @rpc
+    def upload(self, content, filename, export_config):
+        self._check_export_config(export_config)
+        with open('/tmp/{}'.format(filename)) as f:
+            f.write(content)
         if export_config['target']['type'] == 's3':
             bucket_id = export_config['target']['config']['bucket']
             _log.info('Uploading {} on S3 (bucket: {})'.format(filename, bucket_id))
