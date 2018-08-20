@@ -34,7 +34,7 @@ class ExportService(object):
 
     @staticmethod
     def _extension_to_content_type(filename):
-        regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.svg$)'
+        regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.svg|\.json$)'
         r = re.search(regex, filename)
         if not regex:
             raise ExportServiceError('Can not find extension from filename: {}'.format(filename))
