@@ -110,7 +110,7 @@ class ExportService(object):
     @rpc
     def upload(self, content, filename, export_config):
         self._check_export_config(export_config)
-        with open('/tmp/{}'.format(filename)) as f:
+        with open('/tmp/{}'.format(filename), 'w') as f:
             f.write(content)
         if export_config['target']['type'] == 's3':
             bucket_id = export_config['target']['config']['bucket']
