@@ -83,9 +83,9 @@ class ExportService(object):
             cmd = ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename), 
             '--without-gui', '--export-area-drawing', '--export-text-to-path']
         else:
-            raise ExportServiceError('Format {} not supported'.format(export_config['format']['type']))
+            raise ExportServiceError('Format {} not supported'.format(_format))
 
-        status = subprocess.run(cmd)
+        subprocess.run(cmd)
 
     def _call_convert(self, svg_string, filename, dpi):
         with open('/tmp/input.svg', 'w') as f:
@@ -93,7 +93,7 @@ class ExportService(object):
         _log.info('Exporting {} to local filesystem'.format(filename))
         cmd = ['convert', '-density', str(dpi), '/tmp/input.svg', '/tmp/{}'.format(filename)]
         try:
-            status = subprocess.run(cmd)
+            subprocess.run(cmd)
         except:
             raise ExportServiceError('An error occured while running convert command')
 
