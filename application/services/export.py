@@ -34,7 +34,7 @@ class ExportService(object):
 
     @staticmethod
     def _extension_to_content_type(filename):
-        regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.svg|\.json$)'
+        regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.svg|\.json|\.html$)'
         r = re.search(regex, filename)
         if not regex:
             raise ExportServiceError('Can not find extension from filename: {}'.format(filename))
@@ -49,6 +49,8 @@ class ExportService(object):
             return 'image/svg+xml'
         elif ext.endswith('json'):
             return 'application/json'
+        elif ext.endswith('html'):
+            return 'text/html'
         return None
 
     def _upload_to_s3(self, bucket_id, filename):
