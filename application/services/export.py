@@ -33,25 +33,26 @@ class ExportService(object):
                 raise ExportServiceError('Bucket required for S3 target')
 
     @staticmethod
-    def _extension_to_content_type(filename):
+    def _extract_extension(filename):
         regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.svg|\.json|\.html$)'
         r = re.search(regex, filename)
         if not regex:
             raise ExportServiceError('Can not find extension from filename: {}'.format(filename))
         ext = r.group(2)
-        if ext.endswith('jpg') or ext.endswith('jpeg'):
-            return 'image/jpeg'
-        elif ext.endswith('png'):
-            return 'image/png'
-        elif ext.endswith('pdf'):
-            return 'application/pdf'
-        elif ext.endswith('svg'):
-            return 'image/svg+xml'
-        elif ext.endswith('json'):
-            return 'application/json'
-        elif ext.endswith('html'):
-            return 'text/html'
-        return None
+        return ext.replace(".", "")
+
+    @staticmethod
+    def _extension_to_content_type(filename):
+        ext = ExportService._extract_extension(filename)
+        content_types = {
+            'jpg': 'image/jpeg',
+            'png': 'image/png',
+            'pdf': 'application/pdf',
+            'svg': 'image/svg+xml',
+            'json': 'application/json',
+            'html': 'text/html'
+        }
+        return content_types.get(ext)
 
     def _upload_to_s3(self, bucket_id, filename):
         exists = self.s3.lookup(bucket_id)
@@ -90,19 +91,20 @@ class ExportService(object):
         subprocess.run(cmd)
 
     def _call_convert(self, svg_string, filename, dpi):
-        with open('/tmp/input.svg', 'w') as f:
-            f.write(svg_string)
-        _log.info('Exporting {} to local filesystem'.format(filename))
-        cmd = ['convert', '-density', str(dpi), '/tmp/input.svg', '/tmp/{}'.format(filename)]
+        tmp_filename = self._save_on_local_filesystem(svg_string, '/tmp/input.svg')
+        cmd = ['convert', '-density', str(dpi), tmp_filename, '/tmp/{}'.format(filename)]
         try:
             subprocess.run(cmd)
         except:
             raise ExportServiceError('An error occured while running convert command')
 
-    @rpc
-    def export(self, svg_string, filename, export_config, dpi = 72):
-        self._check_export_config(export_config)
-        self._call_convert(svg_string, filename, dpi)
+    def _save_on_local_filesystem(self, content, target_filename):
+        _log.info('Exporting {} to local filesystem'.format(target_filename))
+        with open(target_filename, 'w') as f:
+            f.write(content)
+        return target_filename
+    
+    def _upload_result(self, export_config, filename):
         if export_config['target']['type'] == 's3':
             bucket_id = export_config['target']['config']['bucket']
             _log.info('Uploading {} on S3 (bucket: {})'.format(filename, bucket_id))
@@ -110,15 +112,20 @@ class ExportService(object):
         return url
 
     @rpc
+    def export(self, svg_string, filename, export_config, dpi = 72):
+        self._check_export_config(export_config)
+        ext = ExportService._extract_extension(filename)
+        if ext in ('jpg', 'jpeg', 'png', 'pdf'):
+            self._call_convert(svg_string, filename, dpi)
+        else:
+            self._save_on_local_filesystem(svg_string, '/tmp/{}'.format(filename))
+        return self._upload_result(export_config, filename)
+
+    @rpc
     def upload(self, content, filename, export_config):
         self._check_export_config(export_config)
-        with open('/tmp/{}'.format(filename), 'w') as f:
-            f.write(content)
-        if export_config['target']['type'] == 's3':
-            bucket_id = export_config['target']['config']['bucket']
-            _log.info('Uploading {} on S3 (bucket: {})'.format(filename, bucket_id))
-            url = self._upload_to_s3(bucket_id, filename)
-        return url
+        self._save_on_local_filesystem(content, '/tmp/{}'.format(filename))
+        return self._upload_result(export_config, filename)
 
     @rpc
     def text_to_path(self, svg_string):
