@@ -1,4 +1,4 @@
-FROM python:3-stretch
+FROM python:3.6-stretch
 
 RUN pip3 install boto nameko pytest
 RUN apt-get update && apt-get install -y imagemagick inkscape
