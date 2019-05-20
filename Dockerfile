@@ -1,8 +1,7 @@
-FROM saiqi/16mb-platform:latest
+FROM python:3-stretch
 
-RUN pip3 install boto
-RUN echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/backports.list
-RUN apt-get update && apt-get -t jessie-backports install -y inkscape && apt-get install -y imagemagick
+RUN pip3 install boto nameko pytest
+RUN apt-get update && apt-get install -y imagemagick inkscape
 
 COPY ./fonts/*.ttf ./fonts/*.otf /usr/local/share/fonts/
 RUN fc-cache -fv
@@ -13,3 +12,5 @@ ADD application /service/application
 ADD ./cluster.yml /service
 
 WORKDIR /service
+
+ENTRYPOINT ["nameko","run","--config","cluster.yml"]
