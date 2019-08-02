@@ -2,12 +2,23 @@ from logging import getLogger
 import subprocess
 import re
 from nameko.rpc import rpc
+from nameko.dependency_providers import DependencyProvider
 from boto.s3.key import Key
 from boto.s3.connection import Location
 from application.dependencies.s3 import S3
 
 
 _log = getLogger(__name__)
+
+
+class ErrorHandler(DependencyProvider):
+
+    def worker_result(self, worker_ctx, res, exc_info):
+        if exc_info is None:
+            return
+
+        exc_type, exc, tb = exc_info
+        _log.error(str(exc))
 
 
 class ExportServiceError(Exception):
