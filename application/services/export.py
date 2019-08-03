@@ -66,7 +66,8 @@ class ExportService(object):
 
     def _upload_to_s3(self, bucket_id, filename):
         self.s3.create_bucket(bucket_id)
-        self.s3.upload(bucket_id, f'/tmp/{filename}', filename)
+        content_type = ExportService._extension_to_content_type(filename)
+        return self.s3.upload(bucket_id, f'/tmp/{filename}', filename, content_type)
 
     def _call_inkscape(self, svg_string, filename, _format, dpi):
         with open('/tmp/input.svg', 'w') as f:

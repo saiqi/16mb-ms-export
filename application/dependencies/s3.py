@@ -23,9 +23,15 @@ class S3Handler(object):
                 }]
             })
 
-    def upload(self, bucket_id, full_filename, filename):
+    def upload(self, bucket_id, full_filename, filename, content_type):
+        config = self.resource.meta.client._client_config
+        config.signature_version = botocore.UNSIGNED
+
         self.resource.Bucket(bucket_id).upload_file(
-            Filename=full_filename, Key=filename)
+            Filename=full_filename, Key=filename,
+            ExtraArgs={'ACL': 'public-read', 'ContentType': content_type})
+        return boto3.resource('s3', config=config).meta.client.generate_presigned_url(
+            'get_object', ExpiresIn=0, Params={'Bucket': bucket_id, 'Key': filename})
 
     def close(self):
         self.resource.close()
