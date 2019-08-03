@@ -137,6 +137,8 @@ class ExportService(object):
         ext = ExportService._extract_extension(filename)
         if ext in ('jpg', 'jpeg', 'png', 'pdf'):
             self._call_convert(svg_string, filename, dpi)
+        elif ext == 'svg':
+            self._call_inkscape(svg_string, filename, 'svg', dpi)
         else:
             self._save_on_local_filesystem(svg_string, '/tmp/{}'.format(filename))
         return self._upload_result(export_config, filename)
