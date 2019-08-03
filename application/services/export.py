@@ -5,6 +5,7 @@ from nameko.rpc import rpc
 from nameko.dependency_providers import DependencyProvider
 from boto.s3.key import Key
 from boto.s3.connection import Location
+from boto.s3.cors import CORSConfiguration
 from application.dependencies.s3 import S3
 
 
@@ -65,10 +66,17 @@ class ExportService(object):
         }
         return content_types.get(ext)
 
+    @staticmethod
+    def _get_cors_rules():
+        cfg = CORSConfiguration()
+        cfg.add_rule('GET', '*')
+        return cfg
+
     def _upload_to_s3(self, bucket_id, filename):
         exists = self.s3.lookup(bucket_id)
         if not exists:
             bucket = self.s3.create_bucket(bucket_id, location=Location.EU)
+            bucket.set_cors(ExportService._get_cors_rules())
         else:
             bucket = self.s3.get_bucket(bucket_id)
         k = Key(bucket)
