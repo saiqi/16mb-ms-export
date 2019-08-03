@@ -30,6 +30,7 @@ class ExportService(object):
     name = 'exporter'
 
     s3 = S3()
+    error = ErrorHandler()
 
     @staticmethod
     def _check_export_config(export_config):
