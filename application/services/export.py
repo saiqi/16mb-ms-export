@@ -38,7 +38,8 @@ class ExportService(object):
             raise ExportServiceError('Type not found in target configuration')
         if target['type'] == 's3':
             if 'config' not in target:
-                raise ExportServiceError('Empty configuration not supported for S3 target')
+                raise ExportServiceError(
+                    'Empty configuration not supported for S3 target')
             if 'bucket' not in target['config']:
                 raise ExportServiceError('Bucket required for S3 target')
 
@@ -47,7 +48,8 @@ class ExportService(object):
         regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.svg|\.json|\.html$)'
         r = re.search(regex, filename)
         if not regex:
-            raise ExportServiceError('Can not find extension from filename: {}'.format(filename))
+            raise ExportServiceError(
+                'Can not find extension from filename: {}'.format(filename))
         ext = r.group(2)
         return ext.replace(".", "")
 
@@ -75,16 +77,17 @@ class ExportService(object):
 
         if _format == 'png':
             _log.info('Exporting as PNG {} to local filesystem'.format(filename))
-            cmd = ['inkscape', '/tmp/input.svg', '--export-png=/tmp/{}'.format(filename), 
-            '--without-gui', '--export-area-drawing', '--export-dpi={}'.format(str(dpi))]
+            cmd = ['inkscape', '/tmp/input.svg', '--export-png=/tmp/{}'.format(filename),
+                   '--without-gui', '--export-area-drawing', '--export-dpi={}'.format(str(dpi))]
         elif _format == 'pdf':
             _log.info('Exporting as PDF {} to local filesystem'.format(filename))
-            cmd = ['inkscape', '/tmp/input.svg', '--export-pdf=/tmp/{}'.format(filename), 
-            '--without-gui', '--export-area-drawing', '--export-dpi={}'.format(str(dpi))]
+            cmd = ['inkscape', '/tmp/input.svg', '--export-pdf=/tmp/{}'.format(filename),
+                   '--without-gui', '--export-area-drawing', '--export-dpi={}'.format(str(dpi))]
         elif _format == 'svg':
-            _log.info('Exporting as Plain SVG {} to local filesystem'.format(filename))
-            cmd = ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename), 
-            '--without-gui', '--export-area-drawing', '--export-text-to-path']
+            _log.info(
+                'Exporting as Plain SVG {} to local filesystem'.format(filename))
+            cmd = ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename),
+                   '--without-gui', '--export-area-drawing', '--export-text-to-path']
         else:
             raise ExportServiceError('Format {} not supported'.format(_format))
 
@@ -95,36 +98,36 @@ class ExportService(object):
         cmd = ['convert', '-density', str(dpi)]
         if color_space is None:
             return cmd + [tmp_filename] + ['/tmp/{}'.format(filename)]
-        return cmd 
-        + ['-profile'] 
-        + ['/service/profiles/{}/{}.icc'.format(color_space, profile) ]
-        + [tmp_filename] 
-        + ['/tmp/{}'.format(filename)]
+        return cmd + ['-profile'] + ['/service/profiles/{}/{}.icc'.format(color_space, profile)] + [tmp_filename] + ['/tmp/{}'.format(filename)]
 
     def _call_convert(self, svg_string, filename, dpi, color_space, profile):
-        tmp_filename = self._save_on_local_filesystem(svg_string, '/tmp/input.svg')
+        tmp_filename = self._save_on_local_filesystem(
+            svg_string, '/tmp/input.svg')
         cmd = ExportService._build_convert_command(
             tmp_filename, filename, dpi, color_space, profile)
+        _log.info('Command args: {}'.format(cmd))
         try:
             subprocess.run(cmd)
         except:
-            raise ExportServiceError('An error occured while running convert command')
+            raise ExportServiceError(
+                'An error occured while running convert command')
 
     def _save_on_local_filesystem(self, content, target_filename):
         _log.info('Exporting {} to local filesystem'.format(target_filename))
         with open(target_filename, 'w') as f:
             f.write(content)
         return target_filename
-    
+
     def _upload_result(self, export_config, filename):
         if export_config['target']['type'] == 's3':
             bucket_id = export_config['target']['config']['bucket']
-            _log.info('Uploading {} on S3 (bucket: {})'.format(filename, bucket_id))
+            _log.info('Uploading {} on S3 (bucket: {})'.format(
+                filename, bucket_id))
             url = self._upload_to_s3(bucket_id, filename)
         return url
 
     @rpc
-    def export(self, svg_string, filename, export_config, dpi = 72, color_space=None, profile=None):
+    def export(self, svg_string, filename, export_config, dpi=72, color_space=None, profile=None):
         self._check_export_config(export_config)
         ext = ExportService._extract_extension(filename)
         if ext in ('jpg', 'jpeg', 'png', 'pdf'):
@@ -132,7 +135,8 @@ class ExportService(object):
         elif ext == 'svg':
             self._call_inkscape(svg_string, filename, 'svg', dpi)
         else:
-            self._save_on_local_filesystem(svg_string, '/tmp/{}'.format(filename))
+            self._save_on_local_filesystem(
+                svg_string, '/tmp/{}'.format(filename))
         return self._upload_result(export_config, filename)
 
     @rpc
