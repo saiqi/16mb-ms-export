@@ -10,6 +10,7 @@ RUN fc-cache -fv
 RUN mkdir /service 
 
 ADD application /service/application
+ADD profiles /service/profiles
 ADD ./cluster.yml /service
 
 WORKDIR /service

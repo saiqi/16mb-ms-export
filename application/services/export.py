@@ -90,9 +90,21 @@ class ExportService(object):
 
         subprocess.run(cmd)
 
-    def _call_convert(self, svg_string, filename, dpi):
+    @staticmethod
+    def _build_convert_command(tmp_filename, filename, dpi, color_space, profile):
+        cmd = ['convert', '-density', str(dpi)]
+        if color_space is None:
+            return cmd + [tmp_filename] + ['/tmp/{}'.format(filename)]
+        return cmd 
+        + ['-profile'] 
+        + ['/service/profiles/{}/{}.icc'.format(color_space, profile) ]
+        + [tmp_filename] 
+        + ['/tmp/{}'.format(filename)]
+
+    def _call_convert(self, svg_string, filename, dpi, color_space, profile):
         tmp_filename = self._save_on_local_filesystem(svg_string, '/tmp/input.svg')
-        cmd = ['convert', '-density', str(dpi), tmp_filename, '/tmp/{}'.format(filename)]
+        cmd = ExportService._build_convert_command(
+            tmp_filename, filename, dpi, color_space, profile)
         try:
             subprocess.run(cmd)
         except:
@@ -112,11 +124,11 @@ class ExportService(object):
         return url
 
     @rpc
-    def export(self, svg_string, filename, export_config, dpi = 72):
+    def export(self, svg_string, filename, export_config, dpi = 72, color_space=None, profile=None):
         self._check_export_config(export_config)
         ext = ExportService._extract_extension(filename)
         if ext in ('jpg', 'jpeg', 'png', 'pdf'):
-            self._call_convert(svg_string, filename, dpi)
+            self._call_convert(svg_string, filename, dpi, color_space, profile)
         elif ext == 'svg':
             self._call_inkscape(svg_string, filename, 'svg', dpi)
         else:
