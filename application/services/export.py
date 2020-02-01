@@ -71,7 +71,7 @@ class ExportService(object):
         content_type = ExportService._extension_to_content_type(filename)
         return self.s3.upload(bucket_id, f'/tmp/{filename}', filename, content_type)
 
-    def _call_inkscape(self, svg_string, filename, _format, dpi):
+    def _call_inkscape(self, svg_string, filename, _format, dpi, text_to_path):
         with open('/tmp/input.svg', 'w') as f:
             f.write(svg_string)
 
@@ -86,8 +86,8 @@ class ExportService(object):
         elif _format == 'svg':
             _log.info(
                 'Exporting as Plain SVG {} to local filesystem'.format(filename))
-            cmd = ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename),
-                   '--without-gui', '--export-area-drawing', '--export-text-to-path']
+            cmd = ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename), '--without-gui', '--export-area-drawing', '--export-text-to-path']\
+                if text_to_path else ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename), '--without-gui', '--export-area-drawing']
         else:
             raise ExportServiceError('Format {} not supported'.format(_format))
 
@@ -133,7 +133,7 @@ class ExportService(object):
         if ext in ('jpg', 'jpeg', 'png', 'pdf'):
             self._call_convert(svg_string, filename, dpi, color_space, profile)
         elif ext == 'svg':
-            self._call_inkscape(svg_string, filename, 'svg', dpi)
+            self._call_inkscape(svg_string, filename, 'svg', dpi, True)
         else:
             self._save_on_local_filesystem(
                 svg_string, '/tmp/{}'.format(filename))
@@ -147,7 +147,16 @@ class ExportService(object):
 
     @rpc
     def text_to_path(self, svg_string):
-        self._call_inkscape(svg_string, 'export.svg', 'svg', None)
+        self._call_inkscape(svg_string, 'export.svg', 'svg', None, True)
+
+        with open('/tmp/export.svg', 'r') as f:
+            converted = f.read()
+
+        return converted
+
+    @rpc
+    def to_plain_svg(self, svg_string):
+        self._call_inkscape(svg_string, 'export.svg', 'svg', None, False)
 
         with open('/tmp/export.svg', 'r') as f:
             converted = f.read()
