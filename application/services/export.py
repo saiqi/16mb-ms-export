@@ -88,7 +88,7 @@ class ExportService(object):
             _log.info(
                 'Exporting as Plain SVG {} to local filesystem'.format(filename))
             cmd = ['inkscape', tmp_filename, '--export-plain-svg=/tmp/{}'.format(filename), '--without-gui', '--export-area-drawing', '--export-text-to-path']\
-                if text_to_path else ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename), '--without-gui', '--export-area-drawing']
+                if text_to_path else ['inkscape', tmp_filename, '--export-plain-svg=/tmp/{}'.format(filename), '--without-gui', '--export-area-drawing']
         else:
             raise ExportServiceError('Format {} not supported'.format(_format))
 
