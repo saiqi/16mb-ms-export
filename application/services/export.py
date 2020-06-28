@@ -1,6 +1,7 @@
 from logging import getLogger
 import subprocess
 import re
+import uuid
 from nameko.rpc import rpc
 from nameko.dependency_providers import DependencyProvider
 from application.dependencies.s3 import S3
@@ -72,26 +73,28 @@ class ExportService(object):
         return self.s3.upload(bucket_id, f'/tmp/{filename}', filename, content_type)
 
     def _call_inkscape(self, svg_string, filename, _format, dpi, text_to_path):
-        with open('/tmp/input.svg', 'w') as f:
-            f.write(svg_string)
-
+        tmp_filename = self._save_on_local_filesystem(
+            svg_string, '/tmp/{}.svg'.format(str(uuid.uuid4())))
+        
         if _format == 'png':
             _log.info('Exporting as PNG {} to local filesystem'.format(filename))
-            cmd = ['inkscape', '/tmp/input.svg', '--export-png=/tmp/{}'.format(filename),
+            cmd = ['inkscape', tmp_filename, '--export-png=/tmp/{}'.format(filename),
                    '--without-gui', '--export-area-drawing', '--export-dpi={}'.format(str(dpi))]
         elif _format == 'pdf':
             _log.info('Exporting as PDF {} to local filesystem'.format(filename))
-            cmd = ['inkscape', '/tmp/input.svg', '--export-pdf=/tmp/{}'.format(filename),
-                   '--without-gui', '--export-area-drawing', '--export-dpi={}'.format(str(dpi))]
+            cmd = ['inkscape', tmp_filename, '--export-pdf=/tmp/{}'.format(filename),
+                   '--without-gui', '--export-area-drawing']
         elif _format == 'svg':
             _log.info(
                 'Exporting as Plain SVG {} to local filesystem'.format(filename))
-            cmd = ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename), '--without-gui', '--export-area-drawing', '--export-text-to-path']\
+            cmd = ['inkscape', tmp_filename, '--export-plain-svg=/tmp/{}'.format(filename), '--without-gui', '--export-area-drawing', '--export-text-to-path']\
                 if text_to_path else ['inkscape', '/tmp/input.svg', '--export-plain-svg=/tmp/{}'.format(filename), '--without-gui', '--export-area-drawing']
         else:
             raise ExportServiceError('Format {} not supported'.format(_format))
 
         subprocess.run(cmd)
+
+        return filename
 
     @staticmethod
     def _build_convert_command(tmp_filename, filename, dpi, color_space, profile):
@@ -102,7 +105,7 @@ class ExportService(object):
 
     def _call_convert(self, svg_string, filename, dpi, color_space, profile):
         tmp_filename = self._save_on_local_filesystem(
-            svg_string, '/tmp/input.svg')
+            svg_string, '/tmp/{}.svg'.format(str(uuid.uuid4())))
         cmd = ExportService._build_convert_command(
             tmp_filename, filename, dpi, color_space, profile)
         _log.info('Command args: {}'.format(cmd))
@@ -111,6 +114,28 @@ class ExportService(object):
         except:
             raise ExportServiceError(
                 'An error occured while running convert command')
+
+        return filename
+
+    def _call_ghostscript(self, input_filename, filename, color_space, profile):
+        cmd = [
+            'gs',
+            '-o',
+            '/tmp/{}'.format(filename),
+            '-sDEVICE=pdfwrite',
+            '-dOverrideICC=true',
+            '-sOutputICCProfile=/service/profiles/{}/{}.icc'.format(color_space, profile),
+            '-sColorConversionStrategy=CMYK',
+            '-dProcessColorModel=/DeviceCMYK',
+            '-dRenderIntent=3',
+            '-dDeviceGrayToK=true',
+            '/tmp/{}'.format(input_filename)]
+        _log.info('Command args: {}'.format(cmd))
+        try:
+            subprocess.run(cmd)
+        except:
+            raise ExportServiceError(
+                'An error occured while running ghostscript command')
 
     def _save_on_local_filesystem(self, content, target_filename):
         _log.info('Exporting {} to local filesystem'.format(target_filename))
@@ -130,10 +155,13 @@ class ExportService(object):
     def export(self, svg_string, filename, export_config, dpi=72, color_space=None, profile=None):
         self._check_export_config(export_config)
         ext = ExportService._extract_extension(filename)
-        if ext in ('jpg', 'jpeg', 'png', 'pdf'):
+        if ext in ('jpg', 'jpeg', 'png'):
             self._call_convert(svg_string, filename, dpi, color_space, profile)
         elif ext == 'svg':
             self._call_inkscape(svg_string, filename, 'svg', dpi, True)
+        elif ext == 'pdf':
+            first_pdf = self._call_inkscape(svg_string, '_' + filename, 'pdf', dpi, True)
+            self._call_ghostscript('_' + filename, filename, color_space, profile)
         else:
             self._save_on_local_filesystem(
                 svg_string, '/tmp/{}'.format(filename))
