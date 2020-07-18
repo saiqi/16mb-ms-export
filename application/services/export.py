@@ -119,7 +119,7 @@ class ExportService(object):
 
         return filename
 
-    def _call_ghostscript(self, input_filename, filename, color_space, profile, print_=False):
+    def _call_ghostscript(self, input_filename, filename, color_space, profile, print_):
         if not print_:
             if color_space == 'cmyk':
                 cmd = [
@@ -191,7 +191,7 @@ class ExportService(object):
             self._call_inkscape(svg_string, filename, 'svg', dpi, True)
         elif ext == 'pdf':
             first_pdf = self._call_inkscape(svg_string, '_' + filename, 'pdf', dpi, True)
-            self._call_ghostscript('_' + filename, filename, color_space, profile)
+            self._call_ghostscript('_' + filename, filename, color_space, profile, False)
             os.remove('/tmp/{}'.format(first_pdf))
         elif ext == 'pdfx':
             first_pdf = self._call_inkscape(svg_string, '_' + filename, 'pdf', dpi, True)
