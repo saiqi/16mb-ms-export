@@ -47,7 +47,7 @@ class ExportService(object):
 
     @staticmethod
     def _extract_extension(filename):
-        regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.pdfx|\.svg|\.json|\.html$)'
+        regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.pdfx|\.svg|\.json|\.html)$'
         r = re.search(regex, filename)
         if not regex:
             raise ExportServiceError(
