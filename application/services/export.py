@@ -2,6 +2,7 @@ from logging import getLogger
 import subprocess
 import re
 import uuid
+import os
 from nameko.rpc import rpc
 from nameko.dependency_providers import DependencyProvider
 from application.dependencies.s3 import S3
@@ -46,7 +47,7 @@ class ExportService(object):
 
     @staticmethod
     def _extract_extension(filename):
-        regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.svg|\.json|\.html$)'
+        regex = r'([^\s+])(\.jpg|\.jpeg|\.png|\.pdf|\.pdfx|\.svg|\.json|\.html$)'
         r = re.search(regex, filename)
         if not regex:
             raise ExportServiceError(
@@ -61,6 +62,7 @@ class ExportService(object):
             'jpg': 'image/jpeg',
             'png': 'image/png',
             'pdf': 'application/pdf',
+            'pdfx': 'application/pdf',
             'svg': 'image/svg+xml',
             'json': 'application/json',
             'html': 'text/html'
@@ -117,19 +119,47 @@ class ExportService(object):
 
         return filename
 
-    def _call_ghostscript(self, input_filename, filename, color_space, profile):
-        cmd = [
-            'gs',
-            '-o',
-            '/tmp/{}'.format(filename),
-            '-sDEVICE=pdfwrite',
-            '-dOverrideICC=true',
-            '-sOutputICCProfile=/service/profiles/{}/{}.icc'.format(color_space, profile),
-            '-sColorConversionStrategy=CMYK',
-            '-dProcessColorModel=/DeviceCMYK',
-            '-dRenderIntent=3',
-            '-dDeviceGrayToK=true',
-            '/tmp/{}'.format(input_filename)]
+    def _call_ghostscript(self, input_filename, filename, color_space, profile, print_=False):
+        if not print_:
+            if color_space == 'cmyk':
+                cmd = [
+                    'gs',
+                    '-o',
+                    '/tmp/{}'.format(filename),
+                    '-sDEVICE=pdfwrite',
+                    '-dOverrideICC=true',
+                    '-sOutputICCProfile=/service/profiles/{}/{}.icc'.format(color_space, profile),
+                    '-sColorConversionStrategy=CMYK',
+                    '-dProcessColorModel=/DeviceCMYK',
+                    '-dRenderIntent=3',
+                    '-dDeviceGrayToK=true',
+                    '/tmp/{}'.format(input_filename)]
+            else:
+                cmd = [
+                    'gs',
+                    '-o',
+                    '/tmp/{}'.format(filename),
+                    '-sDEVICE=pdfwrite',
+                    '-dOverrideICC=true',
+                    '-sOutputICCProfile=/service/profiles/{}/{}.icc'.format(color_space, profile),
+                    '/tmp/{}'.format(input_filename)]
+        else:
+            if color_space != 'cmyk':
+                raise ExportServiceError('Color space {} not supported for printed PDF!'.format(color_space))
+            cmd = [
+                'gs',
+                '-o',
+                '/tmp/{}'.format(filename),
+                '-sDEVICE=pdfwrite',
+                '-dOverrideICC=true',
+                '-sOutputICCProfile=/service/profiles/{}/{}.icc'.format(color_space, profile),
+                '-sColorConversionStrategy=CMYK',
+                '-dProcessColorModel=/DeviceCMYK',
+                '-dRenderIntent=3',
+                '-dDeviceGrayToK=true',
+                '-dPDFX',
+                '-dPDFSETTINGS=/printer'
+                '/tmp/{}'.format(input_filename)]
         _log.info('Command args: {}'.format(cmd))
         try:
             subprocess.run(cmd)
@@ -162,10 +192,19 @@ class ExportService(object):
         elif ext == 'pdf':
             first_pdf = self._call_inkscape(svg_string, '_' + filename, 'pdf', dpi, True)
             self._call_ghostscript('_' + filename, filename, color_space, profile)
+            os.remove('/tmp/{}'.format(first_pdf))
+        elif ext == 'pdfx':
+            first_pdf = self._call_inkscape(svg_string, '_' + filename, 'pdf', dpi, True)
+            self._call_ghostscript('_' + filename, filename, color_space, profile, True)
+            os.remove('/tmp/{}'.format(first_pdf))
         else:
             self._save_on_local_filesystem(
                 svg_string, '/tmp/{}'.format(filename))
-        return self._upload_result(export_config, filename)
+        url = self._upload_result(export_config, filename)
+        
+        _log.info('Removing tmp file ...')
+        os.remove('/tmp/{}'.format(filename))
+        return url
 
     @rpc
     def upload(self, content, filename, export_config):
