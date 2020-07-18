@@ -158,7 +158,7 @@ class ExportService(object):
                 '-dRenderIntent=3',
                 '-dDeviceGrayToK=true',
                 '-dPDFX',
-                '-dPDFSETTINGS=/printer'
+                '-dPDFSETTINGS=/printer',
                 '/tmp/{}'.format(input_filename)]
         _log.info('Command args: {}'.format(cmd))
         try:
