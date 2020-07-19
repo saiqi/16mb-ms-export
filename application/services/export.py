@@ -194,8 +194,9 @@ class ExportService(object):
             self._call_ghostscript('_' + filename, filename, color_space, profile, False)
             os.remove('/tmp/{}'.format(first_pdf))
         elif ext == 'pdfx':
-            first_pdf = self._call_inkscape(svg_string, '_' + filename, 'pdf', dpi, True)
-            self._call_ghostscript('_' + filename, filename, color_space, profile, True)
+            clean_filename = filename[:-1]
+            first_pdf = self._call_inkscape(svg_string, '_' + clean_filename, 'pdf', dpi, True)
+            self._call_ghostscript('_' + clean_filename, clean_filename, color_space, profile, True)
             os.remove('/tmp/{}'.format(first_pdf))
         else:
             self._save_on_local_filesystem(
