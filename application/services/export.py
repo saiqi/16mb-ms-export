@@ -81,11 +81,11 @@ class ExportService(object):
         if _format == 'png':
             _log.info('Exporting as PNG {} to local filesystem'.format(filename))
             cmd = ['inkscape', tmp_filename, '--export-png=/tmp/{}'.format(filename),
-                   '--without-gui', '--export-area-drawing', '--export-dpi={}'.format(str(dpi))]
+                   '--without-gui', '--export-area-page', '--export-dpi={}'.format(str(dpi))]
         elif _format == 'pdf':
             _log.info('Exporting as PDF {} to local filesystem'.format(filename))
             cmd = ['inkscape', tmp_filename, '--export-pdf=/tmp/{}'.format(filename),
-                   '--without-gui', '--export-area-drawing']
+                   '--without-gui', '--export-area-page']
         elif _format == 'svg':
             _log.info(
                 'Exporting as Plain SVG {} to local filesystem'.format(filename))
