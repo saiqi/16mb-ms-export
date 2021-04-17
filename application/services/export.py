@@ -118,7 +118,8 @@ class ExportService(object):
         except:
             raise ExportServiceError(
                 'An error occured while running convert command')
-
+        finally:
+            os.remove(tmp_filename)
         return filename
 
     def _call_ghostscript(self, input_filename, filename, color_space, profile, print_):
