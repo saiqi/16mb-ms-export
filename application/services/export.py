@@ -96,6 +96,8 @@ class ExportService(object):
 
         subprocess.run(cmd)
 
+        os.remove(tmp_filename)
+
         return filename
 
     @staticmethod
